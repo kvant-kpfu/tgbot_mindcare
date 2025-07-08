@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -11,28 +11,23 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
-
-# Инициализация бота
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError("Не найден BOT_TOKEN в переменных окружения")
 
 bot = Bot(token=BOT_TOKEN)
 
-# Константы
-MOODS = ['😊 Отлично', '🙂 Хорошо', '😐 Нормальное', '😞 Плохо', '💀 Ужасно']
-ACTIVITIES = ['Попил воды', 'Вышел на прогулку', 'Занимался саморозвитием', 'Уделил время родным', 'Отдыхал']
 
-# Хранилище состояний
+MOODS = ['😊 Отлично', '🙂 Хорошо', '😐 Нормальное', '😞 Плохо', '💀 Ужасно']
+ACTIVITIES = ['💦 Попил воды', '🚶‍ Вышел на прогулку', '🎭 Занимался саморозвитием', '👫 Уделил время родным', '😌 Отдыхал']
+
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
-# Состояния бота
 class UserStates(StatesGroup):
     waiting_for_mood = State()
     waiting_for_reason = State()
@@ -40,7 +35,6 @@ class UserStates(StatesGroup):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):
-    """Обработчик команды /start"""
     kb = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text=m)] for m in MOODS],
         resize_keyboard=True,
@@ -129,6 +123,39 @@ async def activity_chosen(message: types.Message, state: FSMContext):
     await save_activity_data(message.from_user, activity)
     await state.clear()
 
+@dp.message(Command("week"))
+async def week_stats(message: types.Message):
+    user = message.from_user.username or message.from_user.first_name or "аноним"
+    try:
+        with open('mood_data.json', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        await message.answer('Нет данных для статистики.')
+        return
+    week_ago = datetime.now() - timedelta(days=7)
+    user_entries = []
+    for entry in data:
+        if entry.get('user') == user:
+            date_str = entry.get('date', '')
+            try:
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d %H:%M')
+            except ValueError:
+                try:
+                    date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                except ValueError:
+                    continue
+            if date_obj >= week_ago:
+                user_entries.append(entry)
+    if not user_entries:
+        await message.answer('За последнюю неделю у вас нет записей о настроении.')
+        return
+    mood_count = {}
+    for entry in user_entries:
+        mood = entry.get('mood', 'Не указано')
+        mood_count[mood] = mood_count.get(mood, 0) + 1
+    stat_text = '\n'.join([f"{mood}: {count}" for mood, count in mood_count.items()])
+    await message.answer(f'Ваша статистика за неделю:\n{stat_text}')
+
 async def save_mood_data(user: types.User, mood: str, reason: str = None):
     """Сохраняет данные о настроении в JSON файл"""
     entry = {
@@ -151,7 +178,6 @@ async def save_mood_data(user: types.User, mood: str, reason: str = None):
         logger.error(f"Ошибка сохранения настроения: {e}")
 
 async def save_activity_data(user: types.User, activity: str):
-    """Сохраняет данные об активности в JSON файл"""
     entry = {
         'user': user.username or user.first_name or str(user.id),
         'date': datetime.now().strftime('%Y-%m-%d %H:%M'),
