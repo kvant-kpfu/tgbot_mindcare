@@ -10,8 +10,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
 load_dotenv()
-token = '7366099686:AAHHj6jSH4Ny7iUWbc_saC62KSI-t-95-xI'
-bot = Bot(token)
+bot = Bot(token=os.getenv("Token"))
 
 MOODS =  ["😊 Отлично", "🙂 Хорошо", "😐 Такое себе", "😞 Плохо", "💀 Ужасно"]
 doing = ['Попил воды', 'Вышел на прогулку', 'Занимался саморозвитием', 'Уделил время родным', 'Отдыхал']
