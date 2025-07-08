@@ -154,6 +154,18 @@ async def week_stats(message: types.Message):
     stat_text = '\n'.join([f"{mood}: {count}" for mood, count in mood_count.items()])
     await message.answer(f'Ваша статистика за неделю:\n{stat_text}')
 
+@dp.message(Command("help"))
+async def cmd_help(message: types.Message, state: FSMContext):
+    help_text = (
+        "Доступные команды:\n"
+        "/start — начать работу с ботом\n"
+        "/week — статистика настроения за неделю\n"
+        "/help — список команд\n\n"
+        "Просто отвечайте на вопросы бота, чтобы отслеживать своё настроение и активности.\n"
+        "Если у вас плохое настроение, бот пришлёт мем для поднятия духа!"
+    )
+    await message.answer(help_text)
+
 async def save_mood_data(user: types.User, mood: str, reason: str = None):
     entry = {
         'user': user.username or user.first_name or str(user.id),
