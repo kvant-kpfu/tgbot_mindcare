@@ -10,10 +10,11 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
 load_dotenv()
+token = '7366099686:AAHHj6jSH4Ny7iUWbc_saC62KSI-t-95-xI'
+bot = Bot(token)
 
-bot = Bot(token=os.getenv("BOT_TOKEN"))
-
-MOODS = ['Отличное', 'Хорошее', 'Нормальное', 'Плохое', 'Ужасное']
+MOODS =  ["😊 Отлично", "🙂 Хорошо", "😐 Такое себе", "😞 Плохо", "💀 Ужасно"]
+doing = ['Попил воды', 'Вышел на прогулку', 'Занимался саморозвитием', 'Уделил время родным', 'Отдыхал']
 
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
@@ -30,21 +31,45 @@ async def cmd_start(message: types.Message, state: FSMContext):
     )
     user = message.from_user
     name = user.username
-    await message.answer(f"Привет, {name}, какое у тебя сегодня настроение?", reply_markup=kb)
+    await message.answer(
+        f"Привет, {name}, какое у тебя сегодня настроение?",
+        reply_markup=kb
+    )
     await state.set_state(MoodStates.waiting_for_mood)
 
 @dp.message(MoodStates.waiting_for_mood)
 async def mood_chosen(message: types.Message, state: FSMContext):
     mood = message.text
+    activity_kb = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=i)] for i in doing],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
     if mood not in MOODS:
         await message.answer('Пожалуйста, выбери настроение из списка.')
         return
-    await message.answer(f'Твоё настроение на сегодня: {mood}. Спасибо!')
+    await message.answer(f'Твоё настроение на сегодня: {mood}.')
+    await message.answer("Чем ты занимался сегодня?",reply_markup=activity_kb )
+    await state.clear()
+
+
+
+
+
+
+
+@dp.message(MoodStates.waiting_for_mood)
+async def case_chosen(message: types.Message, state: FSMContext):
+    case = message.text
+    if case not in doing:
+        await message.answer('Пожалуйста, выбери занятие из списка.', reply_markup = activity_kb)
+        return
+    await message.answer(f'Твоё занятие на сегодня: {case}.')
     await state.clear()
 
 async def main():
     await dp.start_polling(bot)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     asyncio.run(main())
